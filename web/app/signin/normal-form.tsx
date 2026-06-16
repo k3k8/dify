@@ -4,7 +4,7 @@ import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/r
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CE_EDITION } from '@/config'
+import { API_PREFIX, IS_CE_EDITION } from '@/config'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
@@ -54,6 +54,7 @@ function NormalForm() {
   })
 
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
+  const oidcAutoRedirect = systemFeatures.oidc_auto_redirect
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
   const hasSsoLogin = Boolean(systemFeatures.sso_enforced_for_signin)
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
@@ -68,7 +69,8 @@ function NormalForm() {
   const showORLine = (hasSocialLogin || hasSsoLogin) && hasEmailLogin
   const noLoginMethodsConfigured = !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const isLoading = isCheckLoading || isLoggedIn || (isInviteLink && isInviteCheckLoading)
+  const pendingOidcRedirect = !isCheckLoading && !isLoggedIn && !isInviteLink && oidcAutoRedirect
+  const isLoading = isCheckLoading || isLoggedIn || pendingOidcRedirect || (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
     if (!isLoggedIn)
@@ -77,6 +79,13 @@ function NormalForm() {
     const redirectUrl = resolvePostLoginRedirect(searchParams)
     router.replace(redirectUrl || '/')
   }, [isLoggedIn, router, searchParams])
+
+  useEffect(() => {
+    if (isCheckLoading || isLoggedIn || isInviteLink || !oidcAutoRedirect)
+      return
+
+    window.location.replace(`${API_PREFIX}/oauth/login/oidc`)
+  }, [isCheckLoading, isLoggedIn, isInviteLink, oidcAutoRedirect])
 
   useEffect(() => {
     if (message)

@@ -180,6 +180,7 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+    oidc_auto_redirect: bool = False
 
 
 class FeatureService:
@@ -279,6 +280,13 @@ class FeatureService:
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
+        system_features.oidc_auto_redirect = dify_config.OIDC_AUTO_REDIRECT and all([
+            dify_config.OIDC_CLIENT_ID,
+            dify_config.OIDC_CLIENT_SECRET,
+            dify_config.OIDC_AUTHORIZATION_ENDPOINT,
+            dify_config.OIDC_TOKEN_ENDPOINT,
+            dify_config.OIDC_USERINFO_ENDPOINT,
+        ])
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:

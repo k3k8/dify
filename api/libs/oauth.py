@@ -54,11 +54,19 @@ class GoogleRawUserInfo(TypedDict):
     email: str
 
 
+class OIDCRawUserInfo(TypedDict):
+    sub: str
+    email: str
+    name: NotRequired[str | None]
+    preferred_username: NotRequired[str | None]
+
+
 ACCESS_TOKEN_RESPONSE_ADAPTER = TypeAdapter(AccessTokenResponse)
 OAUTH_STATE_ADAPTER = TypeAdapter(OAuthState)
 GITHUB_RAW_USER_INFO_ADAPTER = TypeAdapter(GitHubRawUserInfo)
 GITHUB_EMAIL_RECORDS_ADAPTER = TypeAdapter(list[GitHubEmailRecord])
 GOOGLE_RAW_USER_INFO_ADAPTER = TypeAdapter(GoogleRawUserInfo)
+OIDC_RAW_USER_INFO_ADAPTER = TypeAdapter(OIDCRawUserInfo)
 
 
 @dataclass
@@ -291,3 +299,70 @@ class GoogleOAuth(OAuth):
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GOOGLE_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
         return OAuthUserInfo(id=str(payload["sub"]), name="", email=payload["email"])
+
+
+class CustomOIDCOAuth(OAuth):
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        redirect_uri: str,
+        authorization_endpoint: str,
+        token_endpoint: str,
+        userinfo_endpoint: str,
+    ):
+        super().__init__(client_id, client_secret, redirect_uri)
+        self._authorization_endpoint = authorization_endpoint
+        self._token_endpoint = token_endpoint
+        self._userinfo_endpoint = userinfo_endpoint
+
+    @override
+    def get_authorization_url(
+        self,
+        invite_token: str | None = None,
+        timezone: str | None = None,
+        language: str | None = None,
+    ) -> str:
+        params = {
+            "client_id": self.client_id,
+            "response_type": "code",
+            "redirect_uri": self.redirect_uri,
+            "scope": "openid email profile",
+        }
+        state = encode_oauth_state(invite_token=invite_token, timezone=timezone, language=language)
+        if state:
+            params["state"] = state
+        return f"{self._authorization_endpoint}?{urllib.parse.urlencode(params)}"
+
+    @override
+    def get_access_token(self, code: str) -> str:
+        data = {
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": self.redirect_uri,
+        }
+        headers = {"Accept": "application/json"}
+        response = _http_client.post(self._token_endpoint, data=data, headers=headers)
+
+        response_json = ACCESS_TOKEN_RESPONSE_ADAPTER.validate_python(_json_object(response))
+        access_token = response_json.get("access_token")
+
+        if not access_token:
+            raise ValueError(f"Error in OIDC token exchange: {response_json}")
+
+        return access_token
+
+    @override
+    def get_raw_user_info(self, token: str) -> JsonObject:
+        headers = {"Authorization": f"Bearer {token}"}
+        response = _http_client.get(self._userinfo_endpoint, headers=headers)
+        response.raise_for_status()
+        return _json_object(response)
+
+    @override
+    def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
+        payload = OIDC_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
+        name = payload.get("name") or payload.get("preferred_username") or ""
+        return OAuthUserInfo(id=str(payload["sub"]), name=str(name), email=payload["email"])

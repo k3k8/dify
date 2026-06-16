@@ -20,6 +20,7 @@ export type SystemFeatureModel = {
   is_email_setup: boolean
   license: LicenseModel
   max_plugin_package_size: number
+  oidc_auto_redirect: boolean
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
   sso_enforced_for_signin: boolean

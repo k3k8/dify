@@ -9,6 +9,7 @@ export const defaultSystemFeatures = {
   enable_email_code_login: false,
   enable_email_password_login: true,
   enable_social_oauth_login: false,
+  oidc_auto_redirect: false,
   enable_collaboration_mode: true,
   is_allow_create_workspace: false,
   is_allow_register: false,

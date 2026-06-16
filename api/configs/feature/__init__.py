@@ -903,6 +903,36 @@ class AuthConfig(BaseSettings):
         default=None,
     )
 
+    OIDC_CLIENT_ID: str | None = Field(
+        description="Custom OIDC client ID",
+        default=None,
+    )
+
+    OIDC_CLIENT_SECRET: str | None = Field(
+        description="Custom OIDC client secret",
+        default=None,
+    )
+
+    OIDC_AUTHORIZATION_ENDPOINT: str | None = Field(
+        description="OIDC authorization endpoint URL",
+        default=None,
+    )
+
+    OIDC_TOKEN_ENDPOINT: str | None = Field(
+        description="OIDC token endpoint URL",
+        default=None,
+    )
+
+    OIDC_USERINFO_ENDPOINT: str | None = Field(
+        description="OIDC userinfo endpoint URL",
+        default=None,
+    )
+
+    OIDC_AUTO_REDIRECT: bool = Field(
+        description="Automatically redirect to OIDC provider on the sign-in page",
+        default=False,
+    )
+
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,

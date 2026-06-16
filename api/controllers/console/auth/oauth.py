@@ -16,7 +16,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
+from libs.oauth import CustomOIDCOAuth, GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
 from libs.token import (
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
@@ -68,7 +68,25 @@ def get_oauth_providers():
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
             )
 
-        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
+        if not all([
+            dify_config.OIDC_CLIENT_ID,
+            dify_config.OIDC_CLIENT_SECRET,
+            dify_config.OIDC_AUTHORIZATION_ENDPOINT,
+            dify_config.OIDC_TOKEN_ENDPOINT,
+            dify_config.OIDC_USERINFO_ENDPOINT,
+        ]):
+            oidc_oauth = None
+        else:
+            oidc_oauth = CustomOIDCOAuth(
+                client_id=dify_config.OIDC_CLIENT_ID,
+                client_secret=dify_config.OIDC_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/oidc",
+                authorization_endpoint=dify_config.OIDC_AUTHORIZATION_ENDPOINT,
+                token_endpoint=dify_config.OIDC_TOKEN_ENDPOINT,
+                userinfo_endpoint=dify_config.OIDC_USERINFO_ENDPOINT,
+            )
+
+        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth, "oidc": oidc_oauth}
         return OAUTH_PROVIDERS
 
 
