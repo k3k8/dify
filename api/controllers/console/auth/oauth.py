@@ -1,6 +1,8 @@
 import logging
 import urllib.parse
 
+from sqlalchemy import select
+
 import httpx
 from flask import current_app, redirect, request
 from flask_restx import Resource
@@ -22,7 +24,7 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
-from models import Account, AccountStatus
+from models import Account, AccountStatus, Tenant
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
@@ -238,6 +240,13 @@ class OAuthCallback(Resource):
         return response
 
 
+def _join_first_tenant(account: Account) -> None:
+    tenant = db.session.execute(select(Tenant).order_by(Tenant.created_at.asc()).limit(1)).scalar_one_or_none()
+    if tenant:
+        TenantService.create_tenant_member(tenant, account, role="normal")
+        account.current_tenant = tenant
+
+
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Account | None:
     account: Account | None = Account.get_by_openid(provider, user_info.id)
 
@@ -260,7 +269,10 @@ def _generate_account(
     if account:
         tenants = TenantService.get_join_tenants(account)
         if not tenants:
-            if not FeatureService.get_system_features().is_allow_create_workspace:
+            oidc_allow_register = provider == "oidc" and dify_config.OIDC_ALLOW_REGISTER
+            if oidc_allow_register:
+                _join_first_tenant(account)
+            elif not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
@@ -293,6 +305,8 @@ def _generate_account(
             timezone=timezone,
             allow_register_override=oidc_allow_register,
         )
+        if oidc_allow_register:
+            _join_first_tenant(account)
 
     # Link account
     AccountService.link_account_integrate(provider, user_info.id, account)
