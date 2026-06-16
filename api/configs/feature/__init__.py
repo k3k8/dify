@@ -933,6 +933,11 @@ class AuthConfig(BaseSettings):
         default=False,
     )
 
+    OIDC_ALLOW_REGISTER: bool = Field(
+        description="Allow new account creation via OIDC login even when open registration is disabled",
+        default=True,
+    )
+
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,

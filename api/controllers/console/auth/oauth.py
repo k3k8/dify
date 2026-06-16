@@ -271,7 +271,8 @@ def _generate_account(
     if not account:
         normalized_email = user_info.email.lower()
         oauth_new_user = True
-        if not FeatureService.get_system_features().is_allow_register:
+        oidc_allow_register = provider == "oidc" and dify_config.OIDC_ALLOW_REGISTER
+        if not FeatureService.get_system_features().is_allow_register and not oidc_allow_register:
             if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
                 raise AccountRegisterError(
                     description=(
