@@ -291,6 +291,7 @@ def _generate_account(
             provider=provider,
             language=interface_language,
             timezone=timezone,
+            allow_register_override=oidc_allow_register,
         )
 
     # Link account

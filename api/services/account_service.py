@@ -350,9 +350,10 @@ class AccountService:
         interface_theme: str = "light",
         is_setup: bool | None = False,
         timezone: str | None = None,
+        allow_register_override: bool = False,
     ) -> Account:
         """Create an account, preferring explicit user timezone over language-derived defaults."""
-        if not FeatureService.get_system_features().is_allow_register and not is_setup:
+        if not FeatureService.get_system_features().is_allow_register and not is_setup and not allow_register_override:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
@@ -1737,6 +1738,7 @@ class RegisterService:
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
+        allow_register_override: bool = False,
     ) -> Account:
         """Register account"""
         db.session.begin_nested()
@@ -1749,6 +1751,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
                 timezone=timezone,
+                allow_register_override=allow_register_override,
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
